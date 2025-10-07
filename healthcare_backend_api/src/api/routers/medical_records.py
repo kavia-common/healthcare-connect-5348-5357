@@ -6,7 +6,7 @@ from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 
 from src.api.db import get_db
-from src.api.dependencies import get_current_user, role_required
+from src.api.dependencies import get_current_user_strict, role_required_strict
 from src.api.models import MedicalRecord, MedicalRecordCreate, MedicalRecordUpdate
 
 router = APIRouter(prefix="/medical_records", tags=["Medical Records"])
@@ -35,7 +35,7 @@ async def _get_patient_id_for_user(db, user_id: str) -> Optional[str]:
 )
 async def list_medical_records(
     patient_id: Optional[str] = Query(None, description="Filter by patient id (required for doctors)"),
-    user_claims: Dict[str, Any] = Depends(get_current_user),
+    user_claims: Dict[str, Any] = Depends(get_current_user_strict),
 ) -> List[MedicalRecord]:
     """Return medical records based on role and provided filters."""
     db = await get_db()
@@ -69,7 +69,7 @@ async def list_medical_records(
 )
 async def create_medical_record(
     payload: MedicalRecordCreate,
-    _: Dict[str, Any] = Depends(role_required(["admin", "doctor"])),
+    _: Dict[str, Any] = Depends(role_required_strict(["admin", "doctor"])),
 ) -> MedicalRecord:
     """Create a medical record for a patient."""
     db = await get_db()
@@ -97,7 +97,7 @@ async def create_medical_record(
 )
 async def get_medical_record(
     record_id: str = Path(..., description="Medical record id"),
-    user_claims: Dict[str, Any] = Depends(get_current_user),
+    user_claims: Dict[str, Any] = Depends(get_current_user_strict),
 ) -> MedicalRecord:
     """Get a specific medical record with RBAC checks."""
     db = await get_db()
@@ -130,7 +130,7 @@ async def get_medical_record(
 async def update_medical_record(
     record_id: str,
     payload: MedicalRecordUpdate,
-    _: Dict[str, Any] = Depends(role_required(["admin", "doctor"])),
+    _: Dict[str, Any] = Depends(role_required_strict(["admin", "doctor"])),
 ) -> MedicalRecord:
     """Update entries in a medical record."""
     db = await get_db()
@@ -159,7 +159,7 @@ async def update_medical_record(
 )
 async def delete_medical_record(
     record_id: str,
-    _: Dict[str, Any] = Depends(role_required(["admin"])),
+    _: Dict[str, Any] = Depends(role_required_strict(["admin"])),
 ) -> None:
     """Delete a medical record (admin only)."""
     db = await get_db()

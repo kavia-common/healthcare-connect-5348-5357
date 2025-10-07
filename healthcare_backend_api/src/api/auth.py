@@ -16,6 +16,8 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 JWT_SECRET = os.getenv("JWT_SECRET", "change_me_in_prod")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRES_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRES_MINUTES", "60"))
+# Allow small clock skew to reduce spurious 401s due to device time drift
+JWT_CLOCK_SKEW_SECONDS = int(os.getenv("JWT_CLOCK_SKEW_SECONDS", "30"))
 
 
 # PUBLIC_INTERFACE
@@ -32,7 +34,7 @@ def get_password_hash(password: str) -> str:
 
 # PUBLIC_INTERFACE
 def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
-    """Create a signed JWT access token with an expiration claim.
+    """Create a signed JWT access token with an expiration and issued-at claim.
 
     Args:
         data: Claims to include in the token (will be copied).
@@ -42,8 +44,10 @@ def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta]
         A signed JWT string.
     """
     to_encode = data.copy()
-    expire = datetime.now(tz=timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRES_MINUTES))
-    to_encode.update({"exp": expire})
+    now = datetime.now(tz=timezone.utc)
+    expire = now + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRES_MINUTES))
+    # Include standard registered claims: exp (expiry) and iat (issued at)
+    to_encode.update({"exp": expire, "iat": int(now.timestamp())})
     encoded_jwt = jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
     return encoded_jwt
 
@@ -55,5 +59,11 @@ def decode_access_token(token: str) -> Dict[str, Any]:
     Raises:
         JWTError: if the token is invalid or expired.
     """
-    payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    # Add leeway for clock skew configurable via env
+    payload = jwt.decode(
+        token,
+        JWT_SECRET,
+        algorithms=[JWT_ALGORITHM],
+        options={"leeway": JWT_CLOCK_SKEW_SECONDS},
+    )
     return payload

@@ -6,7 +6,7 @@ from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Path, status
 
 from src.api.db import get_db
-from src.api.dependencies import get_current_user, role_required
+from src.api.dependencies import get_current_user_strict, role_required_strict
 from src.api.models import Doctor, DoctorCreate, DoctorUpdate
 
 router = APIRouter(prefix="/doctors", tags=["Doctors"])
@@ -39,7 +39,7 @@ async def _assert_doctor_owner_or_admin(doc: Dict[str, Any], user_claims: Dict[s
     summary="List doctors",
     description="List all doctors. Accessible to authenticated users.",
 )
-async def list_doctors(_: Dict[str, Any] = Depends(get_current_user)) -> List[Doctor]:
+async def list_doctors(_: Dict[str, Any] = Depends(get_current_user_strict)) -> List[Doctor]:
     """Return all doctor profiles."""
     db = await get_db()
     cursor = db["doctors"].find({})
@@ -56,7 +56,7 @@ async def list_doctors(_: Dict[str, Any] = Depends(get_current_user)) -> List[Do
 )
 async def create_doctor(
     payload: DoctorCreate,
-    user_claims: Dict[str, Any] = Depends(get_current_user),
+    user_claims: Dict[str, Any] = Depends(get_current_user_strict),
 ) -> Doctor:
     """Create a doctor profile with RBAC rules."""
     db = await get_db()
@@ -86,7 +86,7 @@ async def create_doctor(
 )
 async def get_doctor(
     doctor_id: str = Path(..., description="Doctor document id"),
-    _: Dict[str, Any] = Depends(get_current_user),
+    _: Dict[str, Any] = Depends(get_current_user_strict),
 ) -> Doctor:
     """Get a specific doctor profile."""
     db = await get_db()
@@ -111,7 +111,7 @@ async def get_doctor(
 async def update_doctor(
     doctor_id: str,
     payload: DoctorUpdate,
-    user_claims: Dict[str, Any] = Depends(get_current_user),
+    user_claims: Dict[str, Any] = Depends(get_current_user_strict),
 ) -> Doctor:
     """Update doctor fields with partial payload."""
     db = await get_db()
@@ -142,7 +142,7 @@ async def update_doctor(
 )
 async def delete_doctor(
     doctor_id: str,
-    _: Dict[str, Any] = Depends(role_required(["admin"])),
+    _: Dict[str, Any] = Depends(role_required_strict(["admin"])),
 ) -> None:
     """Delete a doctor profile (admin only)."""
     db = await get_db()

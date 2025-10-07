@@ -6,7 +6,7 @@ from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Path
 
 from src.api.db import get_db
-from src.api.dependencies import get_current_user, role_required
+from src.api.dependencies import get_current_user_strict, role_required_strict
 from src.api.models import Consultation, ConsultationCreate, ConsultationUpdate
 
 router = APIRouter(prefix="/consultations", tags=["Consultations"])
@@ -42,7 +42,7 @@ async def _get_doctor_id_for_user(db, user_id: str) -> Optional[str]:
     summary="List consultations",
     description="List consultations for the current user (admin: all; doctor: their consultations; patient: their consultations).",
 )
-async def list_consultations(user_claims: Dict[str, Any] = Depends(get_current_user)) -> List[Consultation]:
+async def list_consultations(user_claims: Dict[str, Any] = Depends(get_current_user_strict)) -> List[Consultation]:
     """Return consultations filtered by user role and ownership."""
     db = await get_db()
     role = user_claims.get("role")
@@ -75,7 +75,7 @@ async def list_consultations(user_claims: Dict[str, Any] = Depends(get_current_u
 )
 async def create_consultation(
     payload: ConsultationCreate,
-    user_claims: Dict[str, Any] = Depends(role_required(["admin", "doctor"])),
+    user_claims: Dict[str, Any] = Depends(role_required_strict(["admin", "doctor"])),
 ) -> Consultation:
     """Create a consultation, enforcing that doctors can only create for themselves."""
     db = await get_db()
@@ -130,7 +130,7 @@ async def create_consultation(
 )
 async def get_consultation(
     consultation_id: str = Path(..., description="Consultation document id"),
-    user_claims: Dict[str, Any] = Depends(get_current_user),
+    user_claims: Dict[str, Any] = Depends(get_current_user_strict),
 ) -> Consultation:
     """Get a consultation with RBAC checks."""
     db = await get_db()
@@ -168,7 +168,7 @@ async def get_consultation(
 async def update_consultation(
     consultation_id: str,
     payload: ConsultationUpdate,
-    user_claims: Dict[str, Any] = Depends(get_current_user),
+    user_claims: Dict[str, Any] = Depends(get_current_user_strict),
 ) -> Consultation:
     """Update a consultation with RBAC checks."""
     db = await get_db()
@@ -203,7 +203,7 @@ async def update_consultation(
 )
 async def delete_consultation(
     consultation_id: str,
-    _: Dict[str, Any] = Depends(role_required(["admin"])),
+    _: Dict[str, Any] = Depends(role_required_strict(["admin"])),
 ) -> None:
     """Delete a consultation (admin only)."""
     db = await get_db()

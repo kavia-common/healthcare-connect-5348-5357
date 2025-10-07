@@ -14,7 +14,7 @@ from src.api.auth import (
     verify_password,
 )
 from src.api.db import get_db
-from src.api.dependencies import get_current_user
+from src.api.dependencies import get_current_user_strict
 from src.api.models import Token, UserCreate, UserPublic, UserLogin
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -140,7 +140,7 @@ async def register_user(payload: UserCreate) -> UserPublic:
     summary="Current user",
     description="Return the current authenticated user's public profile.",
 )
-async def me(user_claims: Dict[str, Any] = Depends(get_current_user)) -> UserPublic:
+async def me(user_claims: Dict[str, Any] = Depends(get_current_user_strict)) -> UserPublic:
     """Return information about the authenticated user based on the token claims."""
     db = await get_db()
     try:

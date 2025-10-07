@@ -6,7 +6,7 @@ from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Path, status
 
 from src.api.db import get_db
-from src.api.dependencies import get_current_user, role_required
+from src.api.dependencies import get_current_user_strict, role_required_strict
 from src.api.models import Patient, PatientCreate, PatientUpdate
 
 router = APIRouter(prefix="/patients", tags=["Patients"])
@@ -42,7 +42,7 @@ async def _assert_patient_owner_or_admin(
     summary="List patients",
     description="List all patients. Only accessible to admins and doctors.",
 )
-async def list_patients(_: Dict[str, Any] = Depends(role_required(["admin", "doctor"]))) -> List[Patient]:
+async def list_patients(_: Dict[str, Any] = Depends(role_required_strict(["admin", "doctor"]))) -> List[Patient]:
     """Return all patient profiles."""
     db = await get_db()
     cursor = db["patients"].find({})
@@ -60,7 +60,7 @@ async def list_patients(_: Dict[str, Any] = Depends(role_required(["admin", "doc
 )
 async def create_patient(
     payload: PatientCreate,
-    user_claims: Dict[str, Any] = Depends(get_current_user),
+    user_claims: Dict[str, Any] = Depends(get_current_user_strict),
 ) -> Patient:
     """Create a patient profile with RBAC rules."""
     db = await get_db()
@@ -95,7 +95,7 @@ async def create_patient(
 )
 async def get_patient(
     patient_id: str = Path(..., description="Patient document id"),
-    user_claims: Dict[str, Any] = Depends(get_current_user),
+    user_claims: Dict[str, Any] = Depends(get_current_user_strict),
 ) -> Patient:
     """Get a specific patient profile with RBAC enforcement."""
     db = await get_db()
@@ -125,7 +125,7 @@ async def get_patient(
 async def update_patient(
     patient_id: str,
     payload: PatientUpdate,
-    user_claims: Dict[str, Any] = Depends(get_current_user),
+    user_claims: Dict[str, Any] = Depends(get_current_user_strict),
 ) -> Patient:
     """Update patient fields with partial payload."""
     db = await get_db()
@@ -156,7 +156,7 @@ async def update_patient(
 )
 async def delete_patient(
     patient_id: str,
-    _: Dict[str, Any] = Depends(role_required(["admin"])),
+    _: Dict[str, Any] = Depends(role_required_strict(["admin"])),
 ) -> None:
     """Delete a patient profile (admin only)."""
     db = await get_db()
