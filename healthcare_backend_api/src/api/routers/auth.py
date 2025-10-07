@@ -15,7 +15,7 @@ from src.api.auth import (
 )
 from src.api.db import get_db
 from src.api.dependencies import get_current_user
-from src.api.models import Token, UserCreate, UserPublic
+from src.api.models import Token, UserCreate, UserPublic, UserLogin
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -49,6 +49,37 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()) -> Token:
     db = await get_db()
     user = await db["users"].find_one({"email": form_data.username})
     if not user or not verify_password(form_data.password, user.get("hashed_password", "")):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRES_MINUTES)
+    token = create_access_token(
+        data={"sub": str(user["_id"]), "email": user["email"], "role": user.get("role", "patient")},
+        expires_delta=access_token_expires,
+    )
+    return Token(access_token=token, token_type="bearer")
+
+
+# PUBLIC_INTERFACE
+@router.post(
+    "/login_json",
+    response_model=Token,
+    summary="Login (JSON)",
+    description="Authenticate a user using JSON body with email and password and return a JWT token.",
+    responses={
+        200: {"description": "Authentication successful"},
+        401: {"description": "Invalid credentials"},
+        422: {"description": "Validation error"},
+    },
+)
+async def login_json(payload: UserLogin) -> Token:
+    """Validate user credentials provided as JSON and issue a JWT bearer token.
+
+    Args:
+        payload: JSON with fields 'email' and 'password'.
+    """
+    db = await get_db()
+    user = await db["users"].find_one({"email": payload.email})
+    if not user or not verify_password(payload.password, user.get("hashed_password", "")):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRES_MINUTES)
