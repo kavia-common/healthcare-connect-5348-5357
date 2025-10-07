@@ -2,7 +2,6 @@
 
 import logging
 import os
-from typing import AsyncGenerator
 
 from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
@@ -41,9 +40,9 @@ async def get_database() -> AsyncIOMotorDatabase:
 
 
 # PUBLIC_INTERFACE
-async def get_db() -> AsyncGenerator[AsyncIOMotorDatabase, None]:
-    """Yield the database for FastAPI dependency injection."""
-    yield await get_database()
+async def get_db() -> AsyncIOMotorDatabase:
+    """Return the database for FastAPI dependency injection and direct use."""
+    return await get_database()
 
 
 # PUBLIC_INTERFACE
@@ -65,11 +64,11 @@ async def ensure_indexes() -> None:
         # Users: ensure unique email
         await db["users"].create_index("email", unique=True)
 
-        # Patients: user_id index
-        await db["patients"].create_index("user_id")
+        # Patients: ensure unique user_id (1-1 user to patient profile)
+        await db["patients"].create_index("user_id", unique=True)
 
-        # Doctors: user_id and specialty
-        await db["doctors"].create_index("user_id")
+        # Doctors: ensure unique user_id and index specialty
+        await db["doctors"].create_index("user_id", unique=True)
         await db["doctors"].create_index("specialty")
 
         # Consultations: patient_id, doctor_id, scheduled_at
