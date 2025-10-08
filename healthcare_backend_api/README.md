@@ -1,184 +1,205 @@
-# Healthcare Backend API
+# Healthcare Connect Backend API
 
-FastAPI-based backend REST API for the Healthcare Connect application.
+FastAPI backend service for the Healthcare Connect application.
+
+## Overview
+
+This is a RESTful API backend built with FastAPI that provides authentication, patient management, doctor management, consultation scheduling, and medical records management.
 
 ## Features
 
-- **Authentication & Authorization**: JWT-based auth with role-based access control (RBAC)
-- **Patient Management**: CRUD operations for patient profiles
-- **Doctor Management**: CRUD operations for doctor profiles
-- **Consultations**: Schedule and manage doctor-patient consultations
-- **Medical Records**: Secure medical records management
-- **CORS Support**: Configured for cross-origin requests
-- **OpenAPI Documentation**: Auto-generated interactive API docs
+- **Authentication:** JWT-based authentication with role-based access control (RBAC)
+- **User Management:** Support for patients, doctors, and admin roles
+- **Patient Profiles:** Create and manage patient information
+- **Doctor Profiles:** Create and manage doctor information
+- **Consultations:** Schedule and manage doctor-patient consultations
+- **Medical Records:** Store and retrieve patient medical records
+- **OpenAPI Documentation:** Auto-generated API documentation (Swagger UI)
+
+## API Documentation
+
+Once the server is running, access the interactive API documentation at:
+
+- **Swagger UI:** http://localhost:3001/docs
+- **ReDoc:** http://localhost:3001/redoc
+- **OpenAPI JSON:** http://localhost:3001/openapi.json
+
+See also:
+- `docs/API_VERIFICATION.md` - API endpoint verification and examples
+- `docs/QUICKSTART.md` - Quick start guide with demo auth flow
+
+## Tech Stack
+
+- **Framework:** FastAPI 0.109.0
+- **Database:** MongoDB with Motor (async driver)
+- **Authentication:** JWT tokens with python-jose
+- **Password Hashing:** bcrypt via passlib
+- **Validation:** Pydantic v2
+- **ASGI Server:** Uvicorn
 
 ## Prerequisites
 
-- Python 3.10+
-- MongoDB instance running and accessible
+- Python 3.12+
+- MongoDB running on port 5001 (or configured port)
 - pip or poetry for dependency management
 
-## Setup Instructions
+## Environment Variables
 
-### 1. Install Dependencies
+Create a `.env` file in the project root with the following variables:
+
+```bash
+# MongoDB Configuration
+MONGO_URI=mongodb://appuser:dbuser123@localhost:5001/myapp?authSource=admin
+MONGO_DB=myapp
+
+# JWT Configuration
+JWT_SECRET=your-secret-key-change-in-production-use-secure-random-string
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRES_MINUTES=60
+JWT_CLOCK_SKEW_SECONDS=30
+
+# CORS Configuration
+CORS_ORIGINS=http://localhost:3000,http://localhost:3001
+
+# Backend Configuration
+BACKEND_BASE_URL=http://localhost:3001
+```
+
+See `.env.example` for a template with all available options.
+
+### Required Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `MONGO_URI` | MongoDB connection string | Required |
+| `MONGO_DB` | Database name | `myapp` |
+| `JWT_SECRET` | Secret key for JWT signing | Required |
+| `JWT_ALGORITHM` | JWT signing algorithm | `HS256` |
+| `ACCESS_TOKEN_EXPIRES_MINUTES` | Token expiration time | `60` |
+| `CORS_ORIGINS` | Allowed CORS origins (comma-separated) | `*` |
+
+## Installation
+
+### 1. Clone or navigate to the project
+
+```bash
+cd healthcare-connect-5348-5357/healthcare_backend_api
+```
+
+### 2. Create virtual environment
+
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+### 3. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Configure Environment Variables
-
-Copy the example environment file and configure it:
+### 4. Set up environment variables
 
 ```bash
 cp .env.example .env
+# Edit .env with your configuration
 ```
 
-**CRITICAL**: Edit `.env` and update the following:
+### 5. Ensure MongoDB is running
 
-#### Required Configuration
-
-- **JWT_SECRET**: Generate a secure random secret:
-  ```bash
-  python -c "import secrets; print(secrets.token_urlsafe(32))"
-  ```
-  Copy the output and set it as `JWT_SECRET` in your `.env` file.
-
-- **MONGO_URI**: Update with your MongoDB connection string
-  - Format: `mongodb://[username:password@]host:port/database?authSource=admin`
-  - Example: `mongodb://localhost:27017/healthcare?authSource=admin`
-
-- **MONGO_DB**: Set your database name (e.g., `healthcare`)
-
-#### Optional Configuration
-
-- **ACCESS_TOKEN_EXPIRES_MINUTES**: Token expiration time (default: 60)
-- **JWT_CLOCK_SKEW_SECONDS**: Clock skew tolerance (default: 30)
-- **CORS_ORIGINS**: Comma-separated list of allowed origins
-  - Default includes localhost:3000, localhost:3001, and appetize.io
-
-### 3. Verify Configuration
-
-Run the configuration verification script:
-
+Verify database connection:
 ```bash
-python verify_config.py
+mongosh mongodb://appuser:dbuser123@localhost:5001/myapp?authSource=admin
 ```
 
-This will check that all required environment variables are set and modules load correctly.
+## Running the Application
 
-### 4. Start MongoDB
-
-Ensure your MongoDB instance is running and accessible at the URI specified in `MONGO_URI`.
-
-### 5. Start the API Server
-
-Development mode with auto-reload:
+### Development Mode
 
 ```bash
-uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+# From the project root directory
+uvicorn src.api.main:app --host 0.0.0.0 --port 3001 --reload
 ```
 
-Production mode:
+The API will be available at http://localhost:3001
+
+### Production Mode
 
 ```bash
-uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --workers 4
+uvicorn src.api.main:app --host 0.0.0.0 --port 3001 --workers 4
 ```
 
-### 6. Verify the API
-
-Visit the interactive API documentation:
-
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
-- **Health Check**: http://localhost:8000/
-
-## API Endpoints
-
-### Authentication
-- `POST /auth/register` - Register a new user
-- `POST /auth/login` - Login (OAuth2 form-based)
-- `POST /auth/login_json` - Login (JSON-based)
-- `GET /auth/me` - Get current user info
-
-### Patients
-- `GET /patients` - List all patients (admin/doctor)
-- `POST /patients` - Create patient profile
-- `GET /patients/{patient_id}` - Get patient details
-- `PATCH /patients/{patient_id}` - Update patient profile
-- `DELETE /patients/{patient_id}` - Delete patient (admin)
-
-### Doctors
-- `GET /doctors` - List all doctors
-- `POST /doctors` - Create doctor profile
-- `GET /doctors/{doctor_id}` - Get doctor details
-- `PATCH /doctors/{doctor_id}` - Update doctor profile
-- `DELETE /doctors/{doctor_id}` - Delete doctor (admin)
-
-### Consultations
-- `GET /consultations` - List consultations
-- `POST /consultations` - Create consultation
-- `GET /consultations/{consultation_id}` - Get consultation details
-- `PATCH /consultations/{consultation_id}` - Update consultation
-- `DELETE /consultations/{consultation_id}` - Delete consultation (admin)
-
-### Medical Records
-- `GET /medical_records` - List medical records
-- `POST /medical_records` - Create medical record (admin/doctor)
-- `GET /medical_records/{record_id}` - Get medical record
-- `PATCH /medical_records/{record_id}` - Update medical record (admin/doctor)
-- `DELETE /medical_records/{record_id}` - Delete medical record (admin)
-
-## Testing the API
-
-### Using cURL
-
-See `docs/API_VERIFICATION.md` for comprehensive curl command examples.
-
-Quick test:
+### Using Docker
 
 ```bash
-# Health check
-curl http://localhost:8000/
+docker-compose up healthcare_backend_api
+```
 
-# Register a user
-curl -X POST http://localhost:8000/auth/register \
+## Demo Credentials
+
+Use these credentials to test the API:
+
+### Admin Account
+- **Email:** admin@healthcare.com
+- **Password:** admin123
+- **Role:** admin
+
+### Doctor Accounts
+1. **Dr. Sarah Johnson**
+   - **Email:** doctor1@healthcare.com
+   - **Password:** doctor123
+   - **Specialty:** Cardiology
+
+2. **Dr. Michael Chen**
+   - **Email:** doctor2@healthcare.com
+   - **Password:** doctor123
+   - **Specialty:** Pediatrics
+
+### Patient Accounts
+1. **John Smith**
+   - **Email:** patient1@healthcare.com
+   - **Password:** patient123
+
+2. **Emma Davis**
+   - **Email:** patient2@healthcare.com
+   - **Password:** patient123
+
+## Demo Authentication Flow
+
+### 1. Login and Get Token
+
+```bash
+curl -X POST "http://localhost:3001/auth/login_json" \
   -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"Test123!","role":"patient"}'
-
-# Login
-curl -X POST http://localhost:8000/auth/login_json \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"Test123!"}'
+  -d '{
+    "email": "patient1@healthcare.com",
+    "password": "patient123"
+  }'
 ```
 
-### Using the Interactive Docs
+Response:
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer"
+}
+```
 
-1. Navigate to http://localhost:8000/docs
-2. Click "Authorize" button
-3. Register a user via `/auth/register`
-4. Login via `/auth/login_json` to get a token
-5. Copy the `access_token` from the response
-6. Paste it in the "Authorize" dialog (without "Bearer " prefix)
-7. Now you can test all authenticated endpoints
-
-## Authentication
-
-The API uses JWT Bearer tokens for authentication. After logging in, include the token in requests:
+### 2. Use Token for Authenticated Requests
 
 ```bash
-Authorization: Bearer <your_token_here>
+curl -X GET "http://localhost:3001/auth/me" \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE"
 ```
 
-Alternative methods supported:
-- Custom header: `X-Auth-Token: <token>`
-- Query parameter: `?token=<token>` (not recommended for production)
+### 3. Access Protected Resources
 
-### User Roles
-
-- **patient**: Can manage their own profile and medical records
-- **doctor**: Can view patients, create consultations, manage medical records
-- **admin**: Full access to all resources
+```bash
+# Get all doctors (requires authentication)
+curl -X GET "http://localhost:3001/doctors" \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE"
+```
 
 ## Project Structure
 
@@ -186,94 +207,309 @@ Alternative methods supported:
 healthcare_backend_api/
 ├── src/
 │   └── api/
-│       ├── __init__.py
-│       ├── main.py              # FastAPI app and CORS config
-│       ├── auth.py              # JWT and password utilities
-│       ├── db.py                # MongoDB connection and indexes
-│       ├── dependencies.py      # Auth dependencies and RBAC
-│       ├── models.py            # Pydantic models
-│       └── routers/
-│           ├── __init__.py
-│           ├── auth.py          # Auth endpoints
-│           ├── patients.py      # Patient endpoints
-│           ├── doctors.py       # Doctor endpoints
-│           ├── consultations.py # Consultation endpoints
-│           └── medical_records.py # Medical records endpoints
-├── tests/
-│   └── test_auth_jwt.py         # JWT authentication tests
+│       ├── main.py              # FastAPI app initialization
+│       ├── db.py                # Database connection and utilities
+│       ├── auth.py              # Authentication utilities
+│       ├── models/              # Pydantic models
+│       │   ├── user.py
+│       │   ├── patient.py
+│       │   ├── doctor.py
+│       │   ├── consultation.py
+│       │   └── medical_record.py
+│       └── routers/             # API route handlers
+│           ├── auth.py
+│           ├── patients.py
+│           ├── doctors.py
+│           ├── consultations.py
+│           └── medical_records.py
 ├── docs/
-│   ├── API_VERIFICATION.md      # Curl command examples
-│   └── FRONTEND_AUTH_NOTES.md   # Frontend integration notes
-├── interfaces/
-│   └── openapi.json             # Generated OpenAPI spec
-├── .env                         # Environment configuration (DO NOT COMMIT)
-├── .env.example                 # Example environment file
+│   ├── API_VERIFICATION.md      # API testing guide
+│   └── QUICKSTART.md            # Quick start guide
+├── tests/                       # Test files
+├── .env                         # Environment variables (not in git)
+├── .env.example                 # Environment template
 ├── requirements.txt             # Python dependencies
-├── verify_config.py             # Configuration verification script
 └── README.md                    # This file
 ```
 
-## Security Notes
+## API Endpoints
 
-- **Never commit `.env` file** - Add it to `.gitignore`
-- **Use strong JWT_SECRET** - Generate a cryptographically secure random string
-- **HTTPS in production** - Always use HTTPS for production deployments
-- **Rotate secrets regularly** - Update JWT_SECRET periodically
-- **MongoDB authentication** - Always use authentication in production
-- **Rate limiting** - Consider adding rate limiting for production
+### Authentication
+- `POST /auth/login` - Login with form data (OAuth2 compatible)
+- `POST /auth/login_json` - Login with JSON body
+- `POST /auth/register` - Register new user
+- `GET /auth/me` - Get current user info
+
+### Patients
+- `GET /patients` - List all patients (admin/doctor only)
+- `POST /patients` - Create patient profile
+- `GET /patients/{patient_id}` - Get patient by ID
+- `PATCH /patients/{patient_id}` - Update patient
+- `DELETE /patients/{patient_id}` - Delete patient (admin only)
+
+### Doctors
+- `GET /doctors` - List all doctors
+- `POST /doctors` - Create doctor profile
+- `GET /doctors/{doctor_id}` - Get doctor by ID
+- `PATCH /doctors/{doctor_id}` - Update doctor
+- `DELETE /doctors/{doctor_id}` - Delete doctor (admin only)
+
+### Consultations
+- `GET /consultations` - List consultations (filtered by role)
+- `POST /consultations` - Create consultation
+- `GET /consultations/{consultation_id}` - Get consultation by ID
+- `PATCH /consultations/{consultation_id}` - Update consultation
+- `DELETE /consultations/{consultation_id}` - Delete consultation (admin only)
+
+### Medical Records
+- `GET /medical_records` - List medical records (filtered by role)
+- `POST /medical_records` - Create medical record (admin/doctor only)
+- `GET /medical_records/{record_id}` - Get medical record by ID
+- `PATCH /medical_records/{record_id}` - Update medical record
+- `DELETE /medical_records/{record_id}` - Delete medical record (admin only)
+
+## Role-Based Access Control
+
+### Patient Role
+- Can create and update their own patient profile
+- Can view their own consultations and medical records
+- Can view all doctors
+
+### Doctor Role
+- Can create and update their own doctor profile
+- Can view and manage consultations where they are assigned
+- Can view all patients
+- Can create and manage medical records
+
+### Admin Role
+- Full access to all resources
+- Can create/update/delete any user, patient, doctor, consultation, or medical record
+
+## CORS Configuration
+
+CORS is configured via the `CORS_ORIGINS` environment variable. The application automatically includes common development origins:
+
+- http://localhost:3000
+- http://localhost:3001
+- http://127.0.0.1:3000
+- http://127.0.0.1:5173
+- https://appetize.io (for Flutter web preview)
+
+To add more origins, update the `.env` file:
+
+```bash
+CORS_ORIGINS=http://localhost:3000,http://localhost:3001,https://your-domain.com
+```
+
+## Testing
+
+### Run Tests
+
+```bash
+pytest
+```
+
+### Run Tests with Coverage
+
+```bash
+pytest --cov=src --cov-report=html
+```
+
+### Manual API Testing
+
+Use the Swagger UI at http://localhost:3001/docs for interactive testing.
+
+Or use curl/Postman with the demo credentials above.
 
 ## Troubleshooting
 
-### Port Already in Use
+### Common Issues
 
-If port 8000 is already in use, specify a different port:
+#### 1. 401 Unauthorized - Missing or Invalid Token
 
+**Symptoms:**
+- API returns 401 status
+- Error: "Could not validate credentials"
+
+**Solutions:**
+- Ensure you're including the `Authorization: Bearer <token>` header
+- Check that the token hasn't expired (default: 60 minutes)
+- Verify JWT_SECRET matches between token generation and validation
+- Login again to get a fresh token
+
+**Example:**
 ```bash
-uvicorn src.api.main:app --host 0.0.0.0 --port 8001 --reload
+# Correct way to include token
+curl -H "Authorization: Bearer eyJhbGci..." http://localhost:3001/auth/me
 ```
 
-### MongoDB Connection Failed
+#### 2. CORS Errors (Browser)
 
-- Verify MongoDB is running: `mongosh` or `mongo`
-- Check `MONGO_URI` in `.env` is correct
-- Ensure network connectivity and firewall rules
+**Symptoms:**
+- Browser console shows CORS policy error
+- "Access-Control-Allow-Origin" header missing
 
-### Import Errors
+**Solutions:**
+- Add your frontend URL to `CORS_ORIGINS` in `.env`
+- Restart the backend after changing CORS settings
+- For Flutter emulator, use http://10.0.2.2:3001 instead of localhost
 
-Ensure you're running commands from the `healthcare_backend_api` directory and all dependencies are installed:
-
+**Example:**
 ```bash
-pip install -r requirements.txt
+# In .env
+CORS_ORIGINS=http://localhost:3000,http://localhost:3001,http://10.0.2.2:3001
 ```
 
-### CORS Errors
+#### 3. Cannot Connect to MongoDB
 
-Update `CORS_ORIGINS` in `.env` to include your frontend origin:
+**Symptoms:**
+- Connection timeout
+- "ServerSelectionTimeoutError"
 
-```
-CORS_ORIGINS=http://localhost:3000,http://localhost:5173
-```
+**Solutions:**
+- Verify MongoDB is running: `docker ps | grep mongodb`
+- Check connection string in `.env`
+- Ensure port 5001 is not blocked by firewall
+- Test connection: `mongosh mongodb://appuser:dbuser123@localhost:5001/myapp?authSource=admin`
 
-## Running Tests
+#### 4. Import Errors or Module Not Found
 
+**Symptoms:**
+- "ModuleNotFoundError: No module named 'fastapi'"
+- Import errors when starting server
+
+**Solutions:**
+- Activate virtual environment: `source venv/bin/activate`
+- Install dependencies: `pip install -r requirements.txt`
+- Verify Python version: `python --version` (should be 3.12+)
+
+#### 5. Port Already in Use
+
+**Symptoms:**
+- "Address already in use" error
+- Cannot bind to port 3001
+
+**Solutions:**
+- Find process using port: `lsof -i :3001` (Unix) or `netstat -ano | findstr :3001` (Windows)
+- Kill the process or use a different port: `uvicorn src.api.main:app --port 3002`
+
+#### 6. Environment Variables Not Loading
+
+**Symptoms:**
+- Default values used instead of .env values
+- "Required environment variable not set"
+
+**Solutions:**
+- Ensure `.env` file exists in project root
+- Check file permissions: `chmod 644 .env`
+- Verify no syntax errors in `.env` (no quotes, spaces around =)
+- Restart the application after editing `.env`
+
+### Network Configuration for Flutter Emulators
+
+When testing with mobile emulators, use the appropriate network address:
+
+**Android Emulator:**
+- Use `http://10.0.2.2:3001` instead of `localhost:3001`
+- The Android emulator maps 10.0.2.2 to the host's localhost
+
+**iOS Simulator:**
+- Use `http://localhost:3001` (works directly)
+
+**Flutter Web:**
+- Use `http://localhost:3001` (same network)
+
+Update Flutter `.env`:
 ```bash
-pytest tests/ -v
+# For Android emulator
+BACKEND_BASE_URL=http://10.0.2.2:3001
+
+# For iOS simulator or web
+BACKEND_BASE_URL=http://localhost:3001
 ```
 
-## Generating OpenAPI Spec
+### Debugging Tips
 
-To regenerate the OpenAPI specification:
+1. **Enable Debug Logging:**
+   ```bash
+   LOG_LEVEL=DEBUG uvicorn src.api.main:app --reload
+   ```
 
-```bash
-python -m src.api.generate_openapi
-```
+2. **Check Database Connections:**
+   ```bash
+   mongosh mongodb://appuser:dbuser123@localhost:5001/myapp?authSource=admin --eval "db.serverStatus()"
+   ```
 
-Output will be written to `interfaces/openapi.json`.
+3. **Verify Token Contents:**
+   Decode JWT at https://jwt.io to inspect claims
+
+4. **Test Endpoints:**
+   Use Swagger UI at http://localhost:3001/docs for interactive testing
+
+## Performance Optimization
+
+### Database Indexes
+
+Indexes are automatically created on startup for:
+- User email (unique)
+- Patient user_id
+- Doctor user_id
+- Consultation patient_id, doctor_id, scheduled_at
+- Medical record patient_id
+
+### Caching Strategies
+
+For production, consider:
+- Redis for session/token caching
+- Database query result caching
+- CDN for static assets
+
+### Scaling
+
+For high-traffic scenarios:
+- Run multiple uvicorn workers: `--workers 4`
+- Use a reverse proxy (nginx)
+- Implement database connection pooling
+- Consider MongoDB replica sets for read scaling
+
+## Security Best Practices
+
+### For Production
+
+1. **Secure JWT Secret:**
+   ```bash
+   python -c "import secrets; print(secrets.token_urlsafe(32))"
+   ```
+
+2. **Use HTTPS:** Deploy behind SSL/TLS reverse proxy
+
+3. **Limit CORS Origins:** Don't use `*` in production
+
+4. **Rate Limiting:** Implement rate limiting middleware
+
+5. **Input Validation:** All inputs validated via Pydantic models
+
+6. **Password Policy:** Enforce strong passwords (implement in registration)
+
+7. **Logging:** Monitor authentication failures and suspicious activity
+
+8. **Environment Variables:** Never commit `.env` to version control
+
+## Contributing
+
+1. Follow PEP 8 style guide
+2. Add docstrings to all public functions
+3. Include unit tests for new features
+4. Update API documentation when adding endpoints
+5. Run tests before committing: `pytest`
 
 ## License
 
-Proprietary - Healthcare Connect Application
+[Your License Here]
 
 ## Support
 
-For issues or questions, refer to the project documentation or contact the development team.
+For issues or questions:
+- Check the troubleshooting section above
+- Review API documentation at http://localhost:3001/docs
+- Consult `docs/API_VERIFICATION.md` for testing examples
