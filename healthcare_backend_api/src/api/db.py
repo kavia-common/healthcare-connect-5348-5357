@@ -152,6 +152,16 @@ async def ensure_indexes() -> None:
         await db["medical_records"].create_index("patient_id")
         logger.info("✓ Index created: medical_records.patient_id")
 
+        # Tokens/Sessions: user_id and created_at for efficient lookups and cleanup
+        await db["tokens"].create_index("user_id")
+        await db["tokens"].create_index("created_at")
+        logger.info("✓ Indexes created: tokens.user_id, tokens.created_at")
+
+        # Sessions: user_id and created_at (if using separate sessions collection)
+        await db["sessions"].create_index("user_id")
+        await db["sessions"].create_index("created_at")
+        logger.info("✓ Indexes created: sessions.user_id, sessions.created_at")
+
         logger.info("✓ All database indexes ensured successfully")
         
     except Exception as exc:
