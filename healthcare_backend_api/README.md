@@ -40,7 +40,7 @@ See also:
 ## Prerequisites
 
 - Python 3.12+
-- MongoDB running on port 5001 (or configured port)
+- MongoDB running on port 27017 (or configured port)
 - pip or poetry for dependency management
 
 ## Environment Variables
@@ -49,7 +49,7 @@ Create a `.env` file in the project root with the following variables:
 
 ```bash
 # MongoDB Configuration
-MONGO_URI=mongodb://appuser:dbuser123@localhost:5001/myapp?authSource=admin
+MONGO_URI=mongodb://appuser:dbuser123@localhost:27017/myapp?authSource=admin
 MONGO_DB=myapp
 
 # JWT Configuration
@@ -110,7 +110,7 @@ cp .env.example .env
 
 Verify database connection:
 ```bash
-mongosh mongodb://appuser:dbuser123@localhost:5001/myapp?authSource=admin
+mongosh mongodb://appuser:dbuser123@localhost:27017/myapp?authSource=admin
 ```
 
 ## Running the Application
@@ -369,8 +369,8 @@ CORS_ORIGINS=http://localhost:3000,http://localhost:3001,http://10.0.2.2:3001
 **Solutions:**
 - Verify MongoDB is running: `docker ps | grep mongodb`
 - Check connection string in `.env`
-- Ensure port 5001 is not blocked by firewall
-- Test connection: `mongosh mongodb://appuser:dbuser123@localhost:5001/myapp?authSource=admin`
+- Ensure port 27017 is not blocked by firewall
+- Test connection: `mongosh mongodb://appuser:dbuser123@localhost:27017/myapp?authSource=admin`
 
 #### 4. Import Errors or Module Not Found
 
@@ -437,7 +437,7 @@ BACKEND_BASE_URL=http://localhost:3001
 
 2. **Check Database Connections:**
    ```bash
-   mongosh mongodb://appuser:dbuser123@localhost:5001/myapp?authSource=admin --eval "db.serverStatus()"
+   mongosh mongodb://appuser:dbuser123@localhost:27017/myapp?authSource=admin --eval "db.serverStatus()"
    ```
 
 3. **Verify Token Contents:**

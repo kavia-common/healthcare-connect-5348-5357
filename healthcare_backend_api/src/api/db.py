@@ -14,7 +14,7 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:5001/myapp")
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/myapp")
 MONGO_DB = os.getenv("MONGO_DB", "myapp")
 
 # Initialize a single Motor client instance for the app lifecycle.
