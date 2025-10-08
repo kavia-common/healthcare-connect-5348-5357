@@ -21,32 +21,40 @@ OpenAPI docs are available at `/docs` and `/redoc`.
 - Python 3.11+
 - MongoDB running and reachable
 
-## Setup
+## Quickstart (Local Development)
 
-1) Create and configure environment variables. For local development:
+1) Configure environment
 - Copy `.env.example` to `.env`
-- Adjust values for your environment
+- Update any values as needed (defaults below are suggested for local dev)
 
-Environment variables:
-- MONGODB_URI
-- DB_NAME
-- JWT_SECRET
-- JWT_ALGORITHM
-- ACCESS_TOKEN_EXPIRE_MINUTES
-- CORS_ORIGINS
-- INDEXES_FILE (optional)
+Example .env:
+```
+MONGODB_URI=mongodb://localhost:5001
+DB_NAME=healthcare
+JWT_SECRET=replace_me
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=60
+CORS_ORIGINS=http://localhost:3000
+```
 
-2) Install dependencies:
+2) Install dependencies
 ```
 pip install -r requirements.txt
 ```
 
-3) Run the server:
+3) Start MongoDB
+- Ensure a MongoDB instance is running and accessible at `mongodb://localhost:5001`
+  - See the Database container README for options (Docker, local, etc.)
+
+4) Run the server on port 3001 (to match Flutter BASE_URL)
 ```
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --reload --port 3001
 ```
 
-Visit http://localhost:8000/docs for Swagger UI.
+5) Verify API is up
+- Health: http://localhost:3001/ -> `{ "status": "ok", "docs": "/docs" }`
+- Swagger: http://localhost:3001/docs
+- ReDoc: http://localhost:3001/redoc
 
 ## Index Ensuring
 
@@ -82,6 +90,8 @@ Example of the spec (from the database container):
 Both endpoints return a `TokenResponse` including `access_token` and user info.  
 Use the token as a Bearer token to access protected endpoints.
 
+Note: Registration requires a role in the payload, e.g. `{ "email": "...", "password": "...", "role": "patient", "full_name": "..." }`.
+
 ## Patients
 
 - `POST /patients` (patient role) to create profile
@@ -107,8 +117,34 @@ Use the token as a Bearer token to access protected endpoints.
 - `GET /medical_records/{id}`, `PUT /medical_records/{id}` (doctor-only), `DELETE /medical_records/{id}` (doctor/admin)
 
 ## Notes
-- The backend does not read `.env` directly; values are taken from environment variables.  
-- CORS is configured via `CORS_ORIGINS` (comma-separated). Ensure your Flutter frontend origin is listed.
+- The backend reads values from environment variables (not directly from `.env`). For local development, use a tool or shell to export the variables or run with uvicorn while `.env` is loaded via your environment.
+- CORS is configured via `CORS_ORIGINS` (comma-separated). Ensure your Flutter web origin is listed if you are running on the web.
+
+## E2E Validation Checklist
+
+- Register (POST /auth/register) with role included, or create users via the database/seed and login.
+- Login (POST /auth/login)
+- View doctors (GET /doctors)
+- Book consultation (POST /consultations)
+- View appointments (consultations) (GET /consultations with patient_id or doctor_id filter)
+- View records (GET /medical_records)
+
+## Troubleshooting (Frontend/Backend Field and Endpoint Alignment)
+
+- Registration payload: Frontend currently sends `{ name, email, password }` but backend requires `role` and uses `full_name` (optional).  
+  Workaround: Register via a REST client including `role: "patient"`; or update the frontend to send a default role.
+
+- Doctors list: Backend `DoctorPublic` exposes `{ id, user_id, specialty, years_experience, bio }`. The frontend view expects `name` and `hospital`.  
+  Action: Update the frontend to derive a display name (e.g., from user full_name if you extend the backend payload) or display specialty; `hospital` is not provided by the backend.
+
+- Appointments vs Consultations: Backend uses `/consultations`, while frontend uses `/appointments`.  
+  Action: Update the frontend repositories to call `/consultations` and map fields accordingly.
+
+- Medical records fields: Backend returns `diagnosis`, `treatments`, `created_at`, etc. The frontend expects `title`, `date`, `summary`.  
+  Action: Map `title` to `diagnosis` (or a derived label), `date` to `created_at`, and `summary` to `treatments` or a suitable field.
+
+- Database schema alignment: The provided seed script in the database container uses ObjectIds and different field shapes. The backend uses string IDs for some collections (e.g., user `_id` set to email).  
+  Action: Prefer creating data via backend endpoints to keep schema consistent, or adjust the seed to match backend expectations.
 
 ## License
 MIT
