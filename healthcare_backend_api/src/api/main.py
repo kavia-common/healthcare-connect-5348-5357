@@ -3,10 +3,10 @@ import os
 from typing import List
 
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api.db import ensure_indexes, close_client
+from src.api.db import ensure_indexes, close_client, verify_connection
 from src.api.routers import auth as auth_router
 from src.api.routers import consultations as consultations_router
 from src.api.routers import doctors as doctors_router
@@ -16,6 +16,11 @@ from src.api.routers import patients as patients_router
 # Load environment variables from .env
 load_dotenv()
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 tags_metadata = [
@@ -62,24 +67,78 @@ app.add_middleware(
 @app.get("/", summary="Health Check", tags=["Auth"])
 def health_check():
     """Health check endpoint to verify the API is running."""
-    return {"message": "Healthy"}
+    return {"message": "Healthy", "status": "ok"}
+
+
+# PUBLIC_INTERFACE
+@app.get("/health/db", summary="Database Health Check", tags=["Auth"])
+async def db_health_check():
+    """Health check endpoint to verify database connectivity."""
+    try:
+        is_connected = await verify_connection(max_retries=3, retry_delay=0.5)
+        if is_connected:
+            return {
+                "message": "Database connection healthy",
+                "status": "ok",
+                "database": os.getenv("MONGO_DB", "myapp")
+            }
+        else:
+            raise HTTPException(
+                status_code=503,
+                detail="Database connection unavailable"
+            )
+    except Exception as exc:
+        logger.error("Database health check failed: %s", exc)
+        raise HTTPException(
+            status_code=503,
+            detail=f"Database health check failed: {str(exc)}"
+        )
 
 
 @app.on_event("startup")
 async def on_startup() -> None:
-    """Application startup hook: ensure database indexes."""
+    """Application startup hook: verify database connection and ensure indexes."""
+    logger.info("=" * 60)
+    logger.info("Starting Healthcare Connect API")
+    logger.info("=" * 60)
+    
+    # Log configuration
+    mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:5001/myapp")
+    mongo_db = os.getenv("MONGO_DB", "myapp")
+    
+    # Mask password in logs if present
+    display_uri = mongo_uri.split('@')[-1] if '@' in mongo_uri else mongo_uri
+    logger.info("MongoDB URI: %s", display_uri)
+    logger.info("MongoDB Database: %s", mongo_db)
+    logger.info("CORS Origins: %s", CORS_ORIGINS)
+    
     try:
-        await ensure_indexes()
-    except Exception as exc:  # pragma: no cover - startup resilience
-        logger.warning("Startup tasks failed: %s", exc)
+        # Verify database connection with retries
+        logger.info("Verifying database connection...")
+        if await verify_connection(max_retries=5, retry_delay=2.0):
+            logger.info("✓ Database connection successful")
+            
+            # Ensure indexes
+            logger.info("Ensuring database indexes...")
+            await ensure_indexes()
+            logger.info("✓ Startup completed successfully")
+        else:
+            logger.error("✗ Database connection failed - service will start but may have limited functionality")
+            logger.error("Please ensure MongoDB is running on the configured URI")
+            
+    except Exception as exc:
+        logger.error("✗ Startup tasks failed: %s", exc, exc_info=True)
+        logger.warning("Service starting with degraded functionality")
 
 
 @app.on_event("shutdown")
 async def on_shutdown() -> None:
     """Application shutdown hook: close resources."""
+    logger.info("Shutting down Healthcare Connect API...")
     try:
         close_client()
-    except Exception as exc:  # pragma: no cover
+        logger.info("✓ Shutdown completed successfully")
+    except Exception as exc:
         logger.warning("Shutdown tasks encountered an issue: %s", exc)
 
 
@@ -89,3 +148,5 @@ app.include_router(patients_router.router)
 app.include_router(doctors_router.router)
 app.include_router(consultations_router.router)
 app.include_router(medical_records_router.router)
+
+logger.info("All routers registered successfully")
